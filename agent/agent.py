@@ -1,6 +1,6 @@
 """
-Agente Generador de Informes Académicos - Modelo OCC
-Configurado para el flujo de evaluación de la Sesión 2 de ADK.
+Agente Generador de Informes Académicos - Modelo emocional OCC.
+Estructura: Introducción, Desarrollo (párrafos), Conclusiones y Bibliografía.
 """
 
 from __future__ import annotations
@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import csv
-import json
 
 try:
     from google.adk.agents.llm_agent import Agent
@@ -20,21 +19,26 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 
-# --- 1. ALMACÉN DE DATOS (Estructura CsvDataStore) ---
+# --- 1. ESTRUCTURA DE DATOS ---
+
 @dataclass(frozen=True)
 class OccRow:
+    """Representa una sección de contenido, ya sea del CSV o generada."""
     contenido: str
+    nombre: str = ""
+    word_count: int = 0
 
 class OccDataStore:
+    """Almacén para los datos de entrada (CSV) y de salida (Informe final)."""
     def __init__(self, base_dir: Path):
         self.base_dir = base_dir
         self._db: Optional[Dict[str, OccRow]] = None
+        self.report_sections: List[OccRow] = []
 
     def _load_data(self) -> Dict[str, OccRow]:
         path = self.base_dir / "occ.csv"
         db: Dict[str, OccRow] = {}
-        if not path.exists():
-            return db
+        if not path.exists(): return db
         try:
             with path.open(newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
@@ -42,115 +46,89 @@ class OccDataStore:
                     name = (r.get("seccion") or r.get("name") or "").strip()
                     content = (r.get("contenido") or r.get("content") or "").strip()
                     if name:
-                        db[name] = OccRow(contenido=content)
-        except Exception:
-            pass
+                        db[name] = OccRow(contenido=content, nombre=name)
+        except Exception: pass
         return db
 
-    def get_content(self, section_name: str, topic: str = "modelo emocional OCC") -> str:
-        if self._db is None:
-            self._db = self._load_data()
-        
-        # 1. Intentamos obtener la sección del CSV
+    def get_content(self, section_name: str) -> str:
+        if self._db is None: self._db = self._load_data()
         row = self._db.get(section_name)
-        if row:
-            return row.contenido
-            
-        # 2. SI NO EXISTE (Igual que el default del ejemplo de Valencia)
-        # Devolvemos tu texto base completo para que el agente siempre tenga qué escribir
-        return """
-        Ortony, Clore, y Collins (OCC) definen un modelo donde las emociones son 
-        reacciones evaluativas ante eventos, agentes y objetos. Se clasifican en 
-        22 emociones basadas en metas, normas y gustos. Es fundamental para la 
-        IA emocional y la adaptabilidad de agentes inteligentes.
-        """.strip()
+        return row.contenido if row else "Información académica sobre el modelo emocional OCC."
 
-# Instancia global de datos
+    def save_generated_section(self, name: str, text: str):
+        words = len(text.split())
+        self.report_sections.append(OccRow(contenido=text, nombre=name, word_count=words))
+
+    def get_final_report_data(self) -> Dict[str, Any]:
+        total_words = sum(s.word_count for s in self.report_sections)
+        num_refs = 0
+        for s in self.report_sections:
+            if "Bibliografía" in s.nombre or "Referencias" in s.nombre:
+                # Contamos líneas reales de referencias
+                lineas = [l for l in s.contenido.split('\n') if len(l.strip()) > 10]
+                num_refs = len(lineas)
+        return {
+            "sections_list": [{"name": s.nombre, "word_count": s.word_count} for s in self.report_sections],
+            "total_words": total_words,
+            "num_refs": num_refs,
+            "num_sections": len(self.report_sections)
+        }
+
 DATA = OccDataStore(base_dir=Path(__file__).resolve().parent)
 
 # --- 2. TOOLS ---
 
 def generate_section(name: str, topic: str) -> Dict[str, Any]:
-    """Obtiene el contenido de una sección desde el CSV o conocimiento base."""
-    content = DATA.get_content(name, topic)
+    """Paso (1): Recupera contenido base del almacén."""
+    content = DATA.get_content(name)
     return {"name": name, "content": content}
 
-def count_words(text: str) -> Dict[str, Any]:
-    """Audita la longitud de la sección para el JSON de salida"""
-    return {"word_count": len(text.split())}
+def count_words(name: str, text: str) -> Dict[str, Any]:
+    """Paso (3): Registra la sección redactada en el sistema."""
+    DATA.save_generated_section(name, text)
+    count = len(text.split())
+    return {"status": f"Sección '{name}' registrada", "word_count": count}
 
-def generate_pdf(sections: List[Dict[str, Any]], title: str) -> Dict[str, Any]:
-    """Genera el documento PDF procesando subtítulos internos en el Desarrollo."""
+def generate_pdf(title: str) -> Dict[str, Any]:
+    """Paso (4): Crea el PDF usando las secciones registradas en DATA."""
     path = "output/informe.pdf"
     Path("output").mkdir(exist_ok=True)
-    
     doc = SimpleDocTemplate(path)
     styles = getSampleStyleSheet()
     
-    # Personalizamos un poco los estilos para que se vean mejor
-    style_title = styles["Title"]
-    style_h2 = styles["Heading2"] # Para "Introducción", "Desarrollo", etc.
-    style_h3 = styles["Heading3"] # Para los subtítulos internos del Desarrollo
-    style_body = styles["Normal"]
+    elements = [Paragraph(f"<b>{title}</b>", styles["Title"]), Spacer(1, 0.2*inch)]
     
-    elements = [Paragraph(title, style_title), Spacer(1, 0.2*inch)]
-    
-    for s in sections:
-        # 1. Añadimos el nombre de la sección principal
-        elements.append(Paragraph(s["name"], style_h2))
-        
-        # 2. Procesamos el contenido
-        content = s.get("content", "")
-        
-        if s["name"] == "Desarrollo":
-            # Dividimos el contenido por líneas para detectar los subtítulos <b>
-            lines = content.split('\n')
-            for line in lines:
-                clean_line = line.strip()
-                if not clean_line:
-                    continue
-                
-                # Si la línea contiene etiquetas de negrita, la tratamos como subtítulo H3
-                if "<b>" in clean_line or "1." in clean_line[:3] or "2." in clean_line[:3]:
-                    elements.append(Spacer(1, 0.1*inch))
-                    elements.append(Paragraph(clean_line, style_h3))
-                else:
-                    elements.append(Paragraph(clean_line, style_body))
-        else:
-            # Para el resto de secciones, contenido normal
-            elements.append(Paragraph(content, style_body))
-            
-        elements.append(Spacer(1, 0.15*inch))
+    for s in DATA.report_sections:
+        elements.append(Paragraph(s.nombre, styles["Heading2"]))
+        # El Desarrollo y demás secciones se pintan como párrafos normales
+        for paragraph in s.contenido.split('\n'):
+            if paragraph.strip():
+                elements.append(Paragraph(paragraph.strip(), styles["Normal"]))
+                elements.append(Spacer(1, 0.1*inch))
+        elements.append(Spacer(1, 0.1*inch))
     
     doc.build(elements)
     return {"pdf_path": path}
 
-def build_document(sections: List[Dict[str, Any]], title: str, pdf_path: str) -> Dict[str, Any]:
-    """Retorna la estructura necesaria para el evaluador."""
-    total_words = sum(s.get("word_count", 0) for s in sections)
+def build_document(title: str, pdf_path: str) -> Dict[str, Any]:
+    """
+    Finaliza el proceso. Ahora num_sections y la lista de secciones 
+    son totalmente dinámicas según lo que el agente decidió registrar.
+    """
+    report = DATA.get_final_report_data()
     
-    # Cálculo de referencias buscando en la sección Bibliografía
-    num_refs = 0
-    for s in sections:
-        if "Bibliografía" in s["name"]:
-            # Contamos líneas no vacías como referencias
-            num_refs = len([line for line in s.get("content", "").split('\n') if line.strip()])
-
-    result = {
+    # Comprobación de seguridad para el alumno: 
+    # Si el agente ha sido perezoso y solo ha puesto 2 secciones, 
+    # el JSON lo reflejará honestamente.
+    return {
         "title": title,
-        "sections": [{"name": s["name"], "word_count": s.get("word_count", 0)} for s in sections],
-        "total_words": total_words,
-        "num_sections": len(sections),
-        "num_references": num_refs,
-        "pdf_path": pdf_path,
-        "status": "COMPLETED"
+        "sections": report["sections_list"],
+        "total_words": report["total_words"],
+        "num_sections": report["num_sections"],
+        "num_references": report["num_refs"],
+        "pdf_path": pdf_path
     }
-    
-    # IMPORTANTE: Retornamos el diccionario para el evaluador
-    return result
-
-
-# --- 3. ROOT AGENT ---
+# --- 3. AGENTE ---
 
 root_agent = Agent(
     model=LiteLlm(
@@ -159,33 +137,21 @@ root_agent = Agent(
         api_key="sk-LFXs1kjaSxtEDgOMlPUOpA"
     ),
     name="document_agent",
-    description="Agente que genera informes de OCC siguiendo la trayectoria ADK[cite: 450].",
     instruction=(
-        "Eres un experto en IA Emocional. Tu misión es generar un informe académico EXTENSO, original y "
-        "profundamente estructurado sobre el modelo OCC, usando el CSV como base informativa.\n\n"
-        "REGLA CRÍTICA DE FORMATO Y EXTENSIÓN:\n"
-        "1. TÍTULO: Crea un título profesional de MÁXIMO 10 PALABRAS.\n"
-        "2. EVITAR CUADRADOS NEGROS: Usa solo letras, números, puntos y comas. Prohibido usar  '•', '‑', o guiones largos.\n"
-        "3. REDACCIÓN EXTENSA: No copies el CSV. Amplía cada sección con lenguaje técnico profundo para que el informe "
-        "tenga una extensión académica real.\n\n"
-        "FLUJO TÉCNICO ESTRICTAMENTE SECUENCIAL:\n"
-        "1. TÍTULO: Define el título del informe.\n"
-        "2. FASE DE OBTENCIÓN Y REDACCIÓN (Repite para: Introducción, Desarrollo, Conclusiones, Bibliografía):\n"
-        "   a) Llama a 'generate_section' para obtener la base.\n"
-        "   b) REDACCIÓN: Amplía el contenido. En el 'Desarrollo', separa subapartados con SALTO DE LÍNEA y usa este formato:\n"
-        "      <b>1. Taxonomia y Estructura del Modelo OCC</b>\n"
-        "      [Escribe aquí un análisis técnico extenso de los dominios y las 22 emociones]\n"
-        "      <b>2. Procesos Cognitivos de Evaluacion</b>\n"
-        "      [Escribe aquí un análisis técnico extenso sobre variables de intensidad y reglas lógicas]\n"
-        "      <b>3. Aplicaciones y Casos de Uso en Sistemas Inteligentes</b>\n"
-        "      [Escribe aquí ejemplos detallados en robótica, videojuegos y tutoría]\n"
-        "   c) AUDITORÍA: Llama a 'count_words' sobre TU texto redactado.\n"
-        "3. FASE DE PRODUCCIÓN:\n"
-        "   a) Llama a 'generate_pdf' con el título corto y las secciones extendidas.\n"
-        "   b) FINALIZACIÓN: Llama a 'build_document' con los datos finales.\n\n"
-        "REGLA DE ORO: Tu única forma de trabajar es mediante herramientas. No escribas el informe en el chat. "
-        "Al terminar, confirma en español que el PDF se generó con éxito en 'output' con el formato requerido."
+        
+        "Eres un redactor de documentos académicos. Tu flujo de trabajo es estrictamente secuencial y basado en herramientas.\n\n"
+        "POR CADA SECCIÓN (Introducción, 3 secciones independientes de Desarrollo, Conclusiones y Bibliografía):\n"
+        "1. Llama a 'generate_section' para obtener la información base del CSV.\n"
+        "2. Redacta el contenido formal basado en esa información.\n"
+        "3. Llama a 'count_words' para registrar esa sección y sus palabras.\n\n"
+        "REGLAS CRÍTICAS DE FINALIZACIÓN:\n"
+        "- Una vez registradas las 6 secciones, debes llamar a 'generate_pdf' para crear el archivo.\n"
+        "- Acto seguido, DEBES llamar a 'build_document' para consolidar el JSON final.\n\n"
+        "CONFIRMACIÓN FINAL:\n"
+        "- Al terminar todo el proceso técnico, avisa por el chat de que el documento está listo, "
+        "confirmando que se ha generado el PDF y que todo ha quedado registrado correctamente. "
+        "No hace falta que sea un mensaje rígido, usa un tono profesional y amable.\n\n"
+        "ADVERTENCIA: No des la tarea por cerrada hasta haber ejecutado 'build_document'."
     ),
-
     tools=[generate_section, count_words, generate_pdf, build_document],
 )
