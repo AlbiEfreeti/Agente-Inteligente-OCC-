@@ -12,14 +12,14 @@ Desarrollo academico de un agente inteligente con google adk capaz de generar in
 - Liberías: Google adk, csv, json, LiteLlm, dataclasses
 
 ## Ejecución 
-#Instalar Anaconda Windows Shell extension< br / > 
-cd *directorio con el proyecto*< br / > 
-#Instalar adk dentro del proyecto (windows):< br / > 
-pip install google-adk python-dotenv reportlab litellm< br / > 
-pip install "google-adk[eval]"< br / > 
-adk web< br / > 
-#Instrucción en adk web< br / > 
-"Genera un informe académico completo sobre el modelo emocional OCC."< br / > 
+-#Instalar Anaconda Windows Shell extension
+-cd *directorio con el proyecto*
+-#Instalar adk dentro del proyecto (windows):
+-pip install google-adk python-dotenv reportlab litellm
+-pip install "google-adk[eval]"
+-adk web
+-#Instrucción en adk web
+-"Genera un informe académico completo sobre el modelo emocional OCC."
 
 ## Autores
 - Alba Zoel Fleig Gracia [Ver contacto](https://www.linkedin.com/in/alba-zoel-fleig-gracia-5471b52bb/?trk=opento_sprofile_details)
