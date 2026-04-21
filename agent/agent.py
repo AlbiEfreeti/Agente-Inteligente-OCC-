@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import csv
-import json
 
 try:
     from google.adk.agents.llm_agent import Agent
@@ -130,10 +129,6 @@ def build_document(title: str, pdf_path: str) -> Dict[str, Any]:
         "pdf_path": pdf_path
     }
 
-    json_path = Path("informe.json")
-    with json_path.open("w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-
     return result
 
 # --- 3. AGENTE ---
@@ -146,13 +141,12 @@ root_agent = Agent(
     ),
     name="document_agent",
     instruction=(
-        
-        "Eres un analista académico experto en el Modelo OCC. Tu objetivo es generar un Documento Académico  (PDF) "
-        "con una cohesión interna total y una profundidad técnica elevada:\n\n"
+        "Eres un analista académico experto en el Modelo OCC. Tu objetivo es generar un Documento Académico "
+        "con una cohesión interna total y una profundidad técnica elevada.\n\n"
         "PROCESO DE PLANIFICACIÓN (Pensamiento previo):\n"
         "1. Selecciona 3 claves técnicas del CSV para el Desarrollo (ej. 'Taxonomia_22', 'Formula_Intensidad', 'Proceso_Appraisal').\n"
         "2. Identifica los autores y temas clave de esas secciones para asegurar que la Introducción, las Conclusiones "
-        "y la Bibliografía giren en torno a esa elección.\n\n"
+        "y la Bibliografía giren en torno a esa elección. \n\n"
         "ESTRUCTURA Y REDACCIÓN:\n"
         "1. INTRODUCCIÓN LIBRE Y EXTENSA: Tienes libertad para elegir las claves del CSV que desees (como 'Introduccion' "
         "o 'Origen_Historico') y combinarlas con tu conocimiento. Debe presentar los temas específicos que se tratarán después.\n\n"
@@ -162,11 +156,11 @@ root_agent = Agent(
         "analizando su relevancia y limitaciones de forma crítica.\n\n"
         "4. BIBLIOGRAFÍA FILTRADA: Incluye exclusivamente las referencias (claves 'Ref_') que den soporte a los "
         "autores y temas que realmente has incluido en el documento.\n\n"
+        "- Cada sección debe existir EXACTAMENTE UNA vez en todo el pdf. Tras ejecutar 'generate_pdf', verifica que esten las secciones unicas. \n"
         "PASOS TÉCNICOS OBLIGATORIOS:\n"
         "- Obtén los datos con 'generate_section' para cada bloque.\n"
         "- Registra CADA sección de forma individual con 'count_words' para asegurar la trazabilidad.\n"
-        "- IMPORTANTE: Tras registrar todo, ejecuta 'generate_pdf' (asegúrate de que toda la información esté dentro del PDF generado). "
-        "También llama a 'build_document' para crear el JSON que representa el documento. El proceso NO es válido sin estos últimos pasos.\n\n"
+        "- IMPORTANTE: Tras registrar todo, ejecuta 'generate_pdf' y 'build_document'. El pdf creado sera siempre 'informe.pdf'. El proceso NO es válido sin este último paso.\n\n"
         "AVISO FINAL: Al terminar, confirma de forma amable que el documento está listo, el PDF generado y el JSON consolidado."
     ),
     tools=[generate_section, count_words, generate_pdf, build_document],
