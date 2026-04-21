@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import csv
+import json
 
 try:
     from google.adk.agents.llm_agent import Agent
@@ -120,7 +121,7 @@ def build_document(title: str, pdf_path: str) -> Dict[str, Any]:
     # Comprobación de seguridad para el alumno: 
     # Si el agente ha sido perezoso y solo ha puesto 2 secciones, 
     # el JSON lo reflejará honestamente.
-    return {
+    result = {
         "title": title,
         "sections": report["sections_list"],
         "total_words": report["total_words"],
@@ -128,6 +129,13 @@ def build_document(title: str, pdf_path: str) -> Dict[str, Any]:
         "num_references": report["num_refs"],
         "pdf_path": pdf_path
     }
+
+    json_path = Path("informe.json")
+    with json_path.open("w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+    return result
+
 # --- 3. AGENTE ---
 
 root_agent = Agent(
