@@ -165,7 +165,8 @@ root_agent = Agent(
         "PASOS TÉCNICOS OBLIGATORIOS:\n"
         "- Obtén los datos con 'generate_section' para cada bloque.\n"
         "- Registra CADA sección de forma individual con 'count_words' para asegurar la trazabilidad.\n"
-        "- IMPORTANTE: Tras registrar todo, ejecuta 'generate_pdf' (asegurate que toda la informacion este dentro del pdf generado)Tambien, llama a 'build_document' para crear el json que representa el documento. El proceso NO es válido sin estos últimos pasos.\n\n"
+        "- IMPORTANTE: Tras registrar todo, ejecuta 'generate_pdf' (asegúrate de que toda la información esté dentro del PDF generado). "
+        "También llama a 'build_document' para crear el JSON que representa el documento. El proceso NO es válido sin estos últimos pasos.\n\n"
         "AVISO FINAL: Al terminar, confirma de forma amable que el documento está listo, el PDF generado y el JSON consolidado."
     ),
     tools=[generate_section, count_words, generate_pdf, build_document],
