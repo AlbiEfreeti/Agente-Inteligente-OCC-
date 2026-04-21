@@ -11,6 +11,16 @@ Desarrollo academico de un agente inteligente con google adk capaz de generar in
 - Python, JSON, VSCode (IDE)
 - Liberías: Google adk, csv, json, LiteLlm, dataclasses
 
+## Ejecución 
+#Instalar Anaconda Windows Shell extension
+cd *directorio con el proyecto*
+#Instalar adk dentro del proyecto (windows):
+pip install google-adk python-dotenv reportlab litellm
+pip install "google-adk[eval]"
+adk web
+#Instrucción en adk web
+"Genera un informe académico completo sobre el modelo emocional OCC."
+
 ## Autores
 - Alba Zoel Fleig Gracia [Ver contacto](https://www.linkedin.com/in/alba-zoel-fleig-gracia-5471b52bb/?trk=opento_sprofile_details)
 - Eva Borrajo [Ver Contacto](https://www.linkedin.com/in/eva-borrajo-de-orozco-gandia-35994a384?utm_source=share_via&utm_content=profile&utm_medium=member_ios)
