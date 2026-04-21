@@ -139,8 +139,8 @@ root_agent = Agent(
     name="document_agent",
     instruction=(
         
-        "Eres un analista académico experto en el Modelo OCC. Tu objetivo es generar un Documento Académico "
-        "con una cohesión interna total y una profundidad técnica elevada.\n\n"
+        "Eres un analista académico experto en el Modelo OCC. Tu objetivo es generar un Documento Académico  (PDF) "
+        "con una cohesión interna total y una profundidad técnica elevada:\n\n"
         "PROCESO DE PLANIFICACIÓN (Pensamiento previo):\n"
         "1. Selecciona 3 claves técnicas del CSV para el Desarrollo (ej. 'Taxonomia_22', 'Formula_Intensidad', 'Proceso_Appraisal').\n"
         "2. Identifica los autores y temas clave de esas secciones para asegurar que la Introducción, las Conclusiones "
@@ -157,7 +157,7 @@ root_agent = Agent(
         "PASOS TÉCNICOS OBLIGATORIOS:\n"
         "- Obtén los datos con 'generate_section' para cada bloque.\n"
         "- Registra CADA sección de forma individual con 'count_words' para asegurar la trazabilidad.\n"
-        "- IMPORTANTE: Tras registrar todo, ejecuta 'generate_pdf' y 'build_document'. El proceso NO es válido sin este último paso.\n\n"
+        "- IMPORTANTE: Tras registrar todo, ejecuta 'generate_pdf' (asegurate que toda la informacion este dentro del pdf generado)Tambien, llama a 'build_document' para crear el json que representa el documento. El proceso NO es válido sin estos últimos pasos.\n\n"
         "AVISO FINAL: Al terminar, confirma de forma amable que el documento está listo, el PDF generado y el JSON consolidado."
     ),
     tools=[generate_section, count_words, generate_pdf, build_document],
