@@ -141,6 +141,7 @@ root_agent = Agent(
     ),
     name="document_agent",
     instruction=(
+        
         "Eres un analista académico experto en el Modelo OCC. Tu objetivo es generar un Documento Académico "
         "con una cohesión interna total y una profundidad técnica elevada.\n\n"
         "PROCESO DE PLANIFICACIÓN (Pensamiento previo):\n"
